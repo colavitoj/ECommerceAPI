@@ -1,9 +1,9 @@
-﻿import { TableContainer, Paper, Table, TableBody, TableRow, TableCell, Typography, Grid } from "@mui/material";
-import { useStoreContext } from "../../app/context/StoreContext";
+﻿import { TableContainer, Paper, Table, TableBody, TableRow, TableCell } from "@mui/material";
+import { useAppSelector } from "../../app/store/configureStore";
 
 export default function CartSummary() {
 
-    const { cart } = useStoreContext();
+    const { cart } = useAppSelector(state => state.cart)
     
     
 

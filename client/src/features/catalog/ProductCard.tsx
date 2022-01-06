@@ -1,43 +1,37 @@
 import { LoadingButton } from "@material-ui/lab";
 import { Avatar, Button, Card, CardActions, CardContent, CardHeader, CardMedia, Typography } from "@mui/material";
-import { useState } from "react";
 import { Link } from "react-router-dom";
-import agent from "../../app/api/agent";
-import { useStoreContext } from "../../app/context/StoreContext";
 import { Product } from "../../app/models/product";
+import { useAppDispatch, useAppSelector } from "../../app/store/configureStore";
+import { addCartItemAsync, setCart } from "../cart/cartSlice";
 
 interface Props {
     product: Product
 }
 
+
+
 export default function ProductCard({ product }: Props) {
-    const [loading, setLoading] = useState(false);
-    const { setCart } = useStoreContext();  
+    const { status } = useAppSelector(state => state.cart);
+    const dispatch = useAppDispatch();
 
 
-    function handleAddItem(productId: number) {
-        setLoading(true);
-        agent.Cart.addItem(productId)
-            .then(cart => setCart(cart))
-            .catch(error => console.log())
-            .finally(() => setLoading(false))
 
-    }
     return (
         <Card>
-            <CardHeader 
+            <CardHeader
                 avatar={
-                    <Avatar sx={{bgcolor: 'secondary.main'}}>
+                    <Avatar sx={{ bgcolor: 'secondary.main' }}>
                         {product.name.charAt(0).toUpperCase()}
                     </Avatar>
                 }
                 title={product.name}
                 titleTypographyProps={{
-                    sx: {fontWeight: 'bold', color: 'primary.main'}
+                    sx: { fontWeight: 'bold', color: 'primary.main' }
                 }}
             />
             <CardMedia
-                sx={{height: 140, backgroundSize: 'contain', bgcolor: 'primary.light'}}
+                sx={{ height: 140, backgroundSize: 'contain', bgcolor: 'primary.light' }}
                 image={product.pictureUrl}
                 title={product.name}
             />
@@ -51,13 +45,13 @@ export default function ProductCard({ product }: Props) {
             </CardContent>
             <CardActions>
                 <LoadingButton
-                    loading={loading}
-                    onClick={() => handleAddItem(product.id)}
+                    loading={status.includes('pendingAddItem' + product.id)}
+                    onClick={() => dispatch(addCartItemAsync({ productId: product.id }))}
                     size="small">
                     Add to cart
                 </LoadingButton>
                 <Button size="small" component={Link} to={`/catalog/${product.id}`}
-                    >View</Button>
+                >View</Button>
             </CardActions>
         </Card>
     )

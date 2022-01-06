@@ -5,6 +5,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="NewFolder\**" />
+    <Content Remove="NewFolder\**" />
+    <EmbeddedResource Remove="NewFolder\**" />
+    <None Remove="NewFolder\**" />
+    <TypeScriptCompile Remove="NewFolder\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Remove="client\src\features\about\AboutPage.tsx" />
   </ItemGroup>
 
@@ -24,6 +32,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="client\src\app\context\" />
     <Folder Include="Data\Migrations\" />
   </ItemGroup>
 
