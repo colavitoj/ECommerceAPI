@@ -1,10 +1,14 @@
 ﻿using API.Data;
 using API.Entities;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using System.Collections.Generic;
 using System.Linq;
+using API.Extensions;
 using System.Threading.Tasks;
+using API.RequestHelpers;
+using Microsoft.Extensions.Primitives;
+using System;
+using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 
 namespace API.Controllers
 
@@ -19,27 +23,43 @@ namespace API.Controllers
             _context = context;
         }
         [HttpGet]
-        public async Task<ActionResult<List<Product>>> GetProducts(string orderBy)
+        public async Task<ActionResult<PagedList<Product>>> GetProducts([FromQuery] ProductParams productParams)
         {
-            var query = _context.Products.AsQueryable();
+            var query = _context.Products
+                .Sort(productParams.OrderBy)
+                .Search(productParams.SearchTerm)
+                .Filter(productParams.Brands, productParams.Types)
+                .AsQueryable();
 
-            query = orderBy switch
-            {
-                "price" => query.OrderBy(p => p.Price),
-                "priceDesc" => query.OrderByDescending(p => p.Price),
-                _ => query.OrderBy(p => p.Name)
-            };
 
-            return await query.ToListAsync();
+            var products = await PagedList<Product>.ToPagedList(query, productParams.PageNumber, productParams.PageSize);
+            Response.AddPaginationHeader(products.MetaData);
 
+
+
+            return products;
         }
+
+        private StringValues JSonSerializer(MetaData metaData)
+        {
+            throw new NotImplementedException();
+        }
+
         [HttpGet("{id}")]
         public async Task<ActionResult<Product>> GetProduct(int id)
         {
             return await _context.Products.FindAsync(id);
         }
 
+        [HttpGet("filters")]
+        public async Task<IActionResult> GetFilters()
+        {
+            var brands = await _context.Products.Select(p => p.Brand).Distinct().ToListAsync();
+            var types = await _context.Products.Select(p => p.Type).Distinct().ToListAsync();
 
+            return Ok(new { brands, types });
+
+        }
 
     }
 }

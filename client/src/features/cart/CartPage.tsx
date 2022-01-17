@@ -1,6 +1,6 @@
 ﻿import { LoadingButton } from "@material-ui/lab";
 import { Add, Delete, Remove } from "@mui/icons-material";
-import { Box, Button, Grid, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from "@mui/material";
+import { Box, Button, Grid, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from "@mui/material";
 import { Link } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../app/store/configureStore";
 import { addCartItemAsync, removeCartItemAsync } from "./cartSlice";
@@ -10,6 +10,7 @@ export default function CartPage() {
     const { cart, status } = useAppSelector(state => state.cart)
     const dispatch = useAppDispatch()
 
+    if (!cart) return <Typography variant='h3'>Your cart is empty</Typography>
 
     return (
         <>
@@ -24,7 +25,7 @@ export default function CartPage() {
                             <TableCell align="right">Subtotal</TableCell>
                             <TableCell align="right"></TableCell>
                         </TableRow>
-                    </TableHead>
+                    </TableHead>   
                     <TableBody>
                         {cart!.items.map((item) => (
                             <TableRow

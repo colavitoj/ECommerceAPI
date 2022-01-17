@@ -1,6 +1,7 @@
 ﻿using API.Data;
 using API.DTO;
 using API.Entities;
+using API.Extensions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -22,19 +23,21 @@ namespace API.Controllers
 
         public async Task<ActionResult<CartDto>> GetCart()
         {
-            var cart = await RetrieveCart();
+
+            var cart = await RetrieveCart(GetBuyerId());
 
             if (cart == null) return NotFound();
-            return MapCartToDto(cart);
+
+            return cart.MapCartToDto();
         }
 
-       
+
 
 
         [HttpPost]
         public async Task<ActionResult<CartDto>> AddItemToCart(int productId, int quantity)
         {
-            var cart = await RetrieveCart();
+            var cart = await RetrieveCart(GetBuyerId());
 
             if (cart == null) cart = CreateCart();
 
@@ -46,7 +49,7 @@ namespace API.Controllers
 
             var result = await _context.SaveChangesAsync() > 0;
 
-            if (result) return CreatedAtRoute("GetCart", MapCartToDto(cart));
+            if (result) return CreatedAtRoute("GetCart", cart.MapCartToDto());
 
             return BadRequest(new ProblemDetails { Title = "Problem saving item to cart." });
             //save carts changes
@@ -58,8 +61,8 @@ namespace API.Controllers
         [HttpDelete]
         public async Task<ActionResult> DeleteItemFromCart(int productId, int quantity)
         {
-           
-            var cart = await RetrieveCart();
+
+            var cart = await RetrieveCart(GetBuyerId());
 
             cart.RemoveItem(productId, quantity);
 
@@ -68,48 +71,48 @@ namespace API.Controllers
             if (result) return Ok();
 
             return BadRequest(new ProblemDetails { Title = "Unable to remove item from cart." });
-            
-            
+
+
 
         }
 
-        private async Task<Cart> RetrieveCart()
+        private async Task<Cart> RetrieveCart(string buyerId)
         {
+            if (string.IsNullOrEmpty(buyerId))
+            {
+                Response.Cookies.Delete("buyerId");
+                return null;
+            }
+
             return await _context.Carts
                 .Include(i => i.Items)
                 .ThenInclude(p => p.Product)
-                .FirstOrDefaultAsync(x => x.BuyerId == Request.Cookies["buyerId"]);
+                .FirstOrDefaultAsync(x => x.BuyerId == buyerId);
+        }
+
+        private string GetBuyerId()
+        {
+            return User.Identity?.Name ?? Request.Cookies["buyerId"];
         }
 
         private Cart CreateCart()
         {
-            var buyerId = Guid.NewGuid().ToString();
-            var cookieOptions = new CookieOptions { IsEssential = true, Expires = DateTime.Now.AddDays(30)};
-            Response.Cookies.Append("buyerId", buyerId, cookieOptions);
+
+            var buyerId = User.Identity?.Name;
+            if (string.IsNullOrEmpty(buyerId))
+            {
+                buyerId = Guid.NewGuid().ToString();
+                var cookieOptions = new CookieOptions { IsEssential = true, Expires = DateTime.Now.AddDays(30) };
+                Response.Cookies.Append("buyerId", buyerId, cookieOptions);
+            }
             var cart = new Cart { BuyerId = buyerId };
             _context.Carts.Add(cart);
             return cart;
         }
 
-        private static CartDto MapCartToDto(Cart cart)
-        {
-            return new CartDto
-            {
-                Id = cart.Id,
-                BuyerId = cart.BuyerId,
-                Items = cart.Items.Select(item => new CartItemDto
-                {
-                    ProductId = item.ProductId,
-                    Name = item.Product.Name,
-                    Price = item.Product.Price,
-                    PictureUrl = item.Product.PictureUrl,
-                    Type = item.Product.Type,
-                    Brand = item.Product.Brand,
-                    Quantity = item.Quantity
-                }).ToList()
-            };
-        }
 
     }
+
 }
+
 

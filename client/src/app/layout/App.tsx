@@ -1,5 +1,5 @@
 import { Container, createTheme, CssBaseline, ThemeProvider } from "@mui/material";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Route, Switch } from "react-router-dom";
 import AboutPage from "../../features/about/AboutPage";
 import Catalog from "../../features/catalog/Catalog";
@@ -17,24 +17,31 @@ import agent from "../api/agent";
 import LoadingComponent from "./LoadingComponent";
 import CheckoutPage from "../../features/checkout/CheckoutPage";
 import { useAppDispatch } from "../store/configureStore";
-import { setCart } from "../../features/cart/cartSlice";
+import { fetchCartAsync, setCart } from "../../features/cart/cartSlice";
+import Login from "../../features/account/Login";
+import Register from "../../features/account/Register";
+import { fetchCurrentUser } from "../../features/account/accountSlice";
+import PrivateRoute from "./PrivateRoute";
 
 function App() {
     const dispatch = useAppDispatch();
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        const buyerId = getCookie('buyerId')
-        if (buyerId) {
-            agent.Cart.get()
-                .then(cart => dispatch(setCart(cart)))
-                .catch(error => console.log(error))
-                .finally(() => setLoading(false));
-        } else {
-            setLoading(false);
-        }
+    const initApp = useCallback(async () => {
+        try {
 
-    }, [setCart])
+            await dispatch(fetchCurrentUser());
+            await dispatch(fetchCartAsync());
+
+        } catch (error) {
+            console.log(error);
+        }
+    }, [dispatch])
+
+    useEffect(() => {
+        initApp().then(() => setLoading(false));
+
+    }, [initApp])
 
     const [darkMode, setDarkMode] = useState(false);
     const paletteType = darkMode ? 'dark' : 'light'
@@ -67,7 +74,10 @@ function App() {
                     <Route path="/catalog/:id" component={ProductDetails} />
                     <Route path="/server-error" component={ServerError} />
                     <Route path='/cart' component={CartPage} />
-                    <Route path='/checkout' component={CheckoutPage} />
+                    <PrivateRoute path='/checkout' component={CheckoutPage} />
+                    <Route path='/login' component={Login} />
+                    <Route path='/register' component={Register} />
+
 
                     <Route component={NotFound} />
                 </Switch>

@@ -1,18 +1,31 @@
 ﻿import axios, { AxiosError, AxiosResponse } from "axios";
 import { toast } from "react-toastify";
 import { history } from "../..";
-
-const sleep = () => new Promise(resolve => setTimeout(resolve, 10)); //used for testing loading components
+import { PaginatedResponse } from "../models/pagination";
+import { store } from "../store/configureStore";
 
 axios.defaults.baseURL = 'http://localhost:5000/api/';
 axios.defaults.withCredentials = true;
 
 const responseBody = (response: AxiosResponse) => response.data;
 
+axios.interceptors.request.use(config => {
+    const token = store.getState().account.user?.token
+    if (token) config.headers!.Authorization = `Bearer ${token}`;
+    return config;
+})
+
 axios.interceptors.response.use(async response => {
-    return response
+    const pagination = response.headers['pagination'];
+    if (pagination) {
+        response.data = new PaginatedResponse(response.data, JSON.parse(pagination));
+        return response;
+    }
+    return response;
+
 }, (error: AxiosError) => {
     const { data, status } = error.response!;
+
     switch (status) {
         case 400:
             if (data.errors) {
@@ -26,17 +39,14 @@ axios.interceptors.response.use(async response => {
             }
             toast.error(data.title);
             break;
-        case 401:
-            toast.error(data.title);
-            break;
         case 404:
             toast.error(data.title);
             break;
         case 500:
             history.push({
                 pathname: '/server-error',
-                state: {error: data}
-                });
+                state: { error: data }
+            });
             toast.error(data.title);
             break;
         default:
@@ -46,15 +56,16 @@ axios.interceptors.response.use(async response => {
 })
 
 const requests = {
-    get: (url: string) => axios.get(url).then(responseBody),
+    get: (url: string, params?: URLSearchParams) => axios.get(url, { params }).then(responseBody),
     post: (url: string, body: {}) => axios.post(url, body).then(responseBody),
     put: (url: string, body: {}) => axios.put(url, body).then(responseBody),
     delete: (url: string) => axios.delete(url).then(responseBody),
 }
 
 const Catalog = {
-    list: () => requests.get('products'),
-    details: (id: number) => requests.get(`products/${id}`)
+    list: (params: URLSearchParams) => requests.get('products', params),
+    details: (id: number) => requests.get(`products/${id}`),
+    fetchFilters: () => requests.get('products/filters')
 }
 
 const TestErrors = {
@@ -64,6 +75,16 @@ const TestErrors = {
     get500Error: () => requests.get('buggy/server-error'),
     getValidationError: () => requests.get('buggy/validation-error'),
 }
+
+const Account = {
+    login: (values: any) => requests.post('account/login', values),
+    register: (values: any) => requests.post('account/register', values),
+    currentUser: () => requests.get('account/currentUser'),
+
+
+
+}
+
 
 const Cart = {
     get: () => requests.get('cart'),
@@ -75,7 +96,8 @@ const Cart = {
 const agent = {
     Catalog,
     TestErrors,
-    Cart
+    Cart,
+    Account
 }
 
 export default agent;
